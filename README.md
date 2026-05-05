@@ -54,6 +54,7 @@ Companion to [Monetising &amp; Distributing Software](https://github.com/Brendan
 
 - Companion: [Monetising &amp; Distributing Software](https://github.com/BrendanJamesLynskey/Monetising_and_Distributing_Software) — Stripe, subscription pricing, MRR/churn
 - Companion: [Introduction to OAuth](https://github.com/BrendanJamesLynskey/Introduction_to_OAuth) — the auth foundation B2B identity rests on
+- Companion: [Introduction to OpenID Connect](https://github.com/BrendanJamesLynskey/Introduction_to_OpenID_Connect) — the OIDC primitives (ID tokens, discovery, JWKS, federation) used by every B2B SSO integration in this deck
 - Companion: [OAuth for MCP](https://github.com/BrendanJamesLynskey/OAuth_for_MCP) — full provider tour
 - Companion: [Web Authentication](https://github.com/BrendanJamesLynskey/Introduction_to_Web_Authentication) — sessions, JWTs, MFA
 - Next in series: [Cloud_aaS_05_Cloud_Security](https://github.com/BrendanJamesLynskey/Cloud_aaS_05_Cloud_Security) — the cloud-security cross-cuts
