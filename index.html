@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaaS Architecture — Multi-Tenancy, B2B Identity, Metering, Observability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/black.min.css">
+<style>
+  :root{--amber:#f5a623;--green:#4ecb8d;--purple:#a78bfa;--blue:#60a5fa;--red:#f87171;
+    --bg:#0a0a0f;--bg2:#10101a;--bg3:#181824;--border:#2a2a3a;--text:#e8e8f0;--muted:#8888a8;}
+  .reveal-viewport{background:var(--bg);} .reveal .slides section{background:transparent;}
+  .reveal{font-family:'DM Sans',sans-serif;color:var(--text);}
+  .reveal h1,.reveal h2,.reveal h3{font-family:'Playfair Display',serif;font-weight:700;}
+  .reveal h1{font-size:1.6em;color:var(--amber);line-height:1.1;}
+  .reveal h2{font-size:1.1em;color:var(--amber);margin-bottom:.2em;}
+  .reveal h3{font-size:.78em;color:var(--green);margin-bottom:.15em;}
+  .reveal p{font-size:.56em;line-height:1.45;color:var(--text);}
+  .reveal li{font-size:.54em;line-height:1.45;margin-bottom:.1em;}
+  .reveal code{font-family:'JetBrains Mono',monospace;font-size:.72em;}
+  .reveal pre{box-shadow:none;background:var(--bg3);border:1px solid var(--border);
+    border-radius:6px;padding:.3em .5em;margin:.25em 0;}
+  .reveal pre code{font-size:.52em;line-height:1.35;background:transparent;color:#cdd6f4;}
+  .slide-hdr{display:flex;align-items:center;gap:.4em;border-bottom:1px solid var(--border);
+    padding-bottom:.2em;margin-bottom:.3em;}
+  .slide-hdr .tag{font-family:'JetBrains Mono',monospace;font-size:.42em;font-weight:500;
+    color:var(--bg);background:var(--amber);padding:.1em .4em;border-radius:3px;letter-spacing:.04em;}
+  .slide-hdr h2{margin:0;font-size:.95em;}
+  .cols{display:grid;gap:.5em;} .cols-2{grid-template-columns:1fr 1fr;}
+  .cols-3{grid-template-columns:1fr 1fr 1fr;} .cols-4{grid-template-columns:1fr 1fr 1fr 1fr;}
+  .cols-6040{grid-template-columns:6fr 4fr;} .cols-4060{grid-template-columns:4fr 6fr;}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:.35em .6em;}
+  .card.amber{border-left:3px solid var(--amber);} .card.green{border-left:3px solid var(--green);}
+  .card.purple{border-left:3px solid var(--purple);} .card.blue{border-left:3px solid var(--blue);}
+  .card.red{border-left:3px solid var(--red);}
+  .card h3{font-size:.64em;margin:0 0 .12em;} .card p{font-size:.52em;margin:0;color:#b8b8d0;}
+  .card ul{margin:0;padding-left:1em;} .card li{font-size:.52em;color:#b8b8d0;margin-bottom:.02em;}
+  .reveal table{width:100%;border-collapse:collapse;font-size:.5em;}
+  .reveal table th{background:var(--bg3);color:var(--amber);font-weight:600;
+    padding:.2em .4em;border:1px solid var(--border);text-align:left;}
+  .reveal table td{padding:.18em .4em;border:1px solid var(--border);color:#ccc;}
+  .reveal table tr:nth-child(even) td{background:#0e0e18;}
+  .a{color:var(--amber);font-weight:600;} .g{color:var(--green);font-weight:600;}
+  .p{color:var(--purple);font-weight:600;} .b{color:var(--blue);font-weight:600;}
+  .r{color:var(--red);font-weight:600;} .mono{font-family:'JetBrains Mono',monospace;}
+  svg.diagram{display:block;margin:0 auto;overflow:visible;}
+  .pill{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.44em;
+    padding:.08em .4em;border-radius:99px;border:1px solid;margin:0 .08em;}
+  .pill.amber{color:var(--amber);border-color:var(--amber);}
+  .pill.green{color:var(--green);border-color:var(--green);}
+  .pill.purple{color:var(--purple);border-color:var(--purple);}
+  .pill.blue{color:var(--blue);border-color:var(--blue);}
+  .reveal .slide-footer{display:none;}
+  .title-slide h1{font-size:1.8em;}
+  .title-slide .subtitle{font-size:.7em;color:var(--green);font-family:'DM Sans',sans-serif;
+    font-weight:300;letter-spacing:.04em;margin:.3em 0 .6em;}
+  .title-slide .meta{font-size:.48em;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+  .ss-row{display:flex;gap:.25em;align-items:center;margin:.1em 0;font-size:.55em;
+    font-family:'JetBrains Mono',monospace;flex-wrap:wrap;}
+  .ss-node{padding:.2em .55em;border-radius:5px;font-size:.9em;
+    background:var(--bg3);border:1px solid var(--border);color:var(--text);}
+  .ss-node.active{background:#1a2a1a;border-color:var(--green);color:var(--green);}
+  .ss-node.done{background:#1a1a2a;border-color:var(--purple);color:var(--purple);}
+  .ss-arrow{color:var(--amber);} .ss-label{font-size:.8em;color:var(--muted);margin-left:.3em;}
+  .reveal ul,.reveal ol{margin:.15em 0 .15em 1em;}
+  .reveal .slides>section{display:flex!important;flex-direction:column!important;
+    overflow-y:auto!important;align-items:stretch!important;justify-content:flex-start!important;}
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+
+<!-- 01 — TITLE -->
+<section class="title-slide" data-background-color="#0a0a0f">
+  <div style="text-align:left; max-width:820px; margin:0 auto; padding: 1em 0;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.5em; color:var(--muted); margin-bottom:.4em; letter-spacing:.1em;">
+      CLOUD SERVICE MODELS &middot; PART 4 OF 6
+    </div>
+    <h1>SaaS<br>Architecture</h1>
+    <div class="subtitle">Multi-tenancy · B2B identity · metering · per-tenant observability</div>
+    <div style="width:60px; height:3px; background:var(--amber); margin-bottom:1.4em;"></div>
+    <div style="display:flex; gap:.4em; flex-wrap:wrap; margin-bottom:1em;">
+      <span class="pill amber">Pool · Bridge · Silo</span>
+      <span class="pill green">SAML · OIDC · SCIM</span>
+      <span class="pill purple">Metering · Stripe</span>
+      <span class="pill blue">Per-tenant SLOs</span>
+    </div>
+    <div class="ss-row">
+      <span class="ss-node active">🏢 Tenant</span>
+      <span class="ss-arrow">→</span>
+      <span class="ss-node active">🔐 IdP</span>
+      <span class="ss-arrow">→</span>
+      <span class="ss-node active">🌐 App</span>
+      <span class="ss-arrow">→</span>
+      <span class="ss-node active">📊 Meter</span>
+      <span class="ss-arrow">→</span>
+      <span class="ss-node done">💳 Bill</span>
+    </div>
+    <p style="max-width:640px; color:#a0a0c0; font-size:.56em; line-height:1.5; margin-top:1em;">
+      The architectural side of SaaS — the patterns that decide whether your platform scales to ten or ten-thousand tenants without rewrites. Companion to <a href="https://github.com/BrendanJamesLynskey/Monetising_and_Distributing_Software" style="color:#4ecb8d;">Monetising &amp; Distributing Software</a> (the business side).
+    </p>
+    <div class="meta" style="margin-top:1.4em;">
+      Tenants &nbsp;·&nbsp; Identity &nbsp;·&nbsp; Meter &nbsp;·&nbsp; Observe
+    </div>
+  </div>
+</section>
+
+
+<!-- 02 — TOPICS -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">01</span><h2>Topics</h2></div>
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Multi-tenancy</h3>
+        <ul>
+          <li>The four patterns: Pool, Bridge, Silo, Hybrid</li>
+          <li>Tenant isolation — at app, DB, network</li>
+          <li>Postgres Row-Level Security</li>
+          <li>Cell-based architecture for scale</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">B2B identity</h3>
+        <ul>
+          <li>Why B2B is different from B2C</li>
+          <li>SAML / OIDC / SCIM federation</li>
+          <li>Auth-as-a-Service (Auth0, WorkOS, Stytch, Clerk, FrontEgg)</li>
+          <li>BYO IdP, multi-IdP per tenant</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Metering &amp; billing</h3>
+        <ul>
+          <li>Metering data models</li>
+          <li>Stripe / Lago / Orb / Metronome</li>
+          <li>Subscription &amp; usage hybrids</li>
+          <li>Dunning &amp; revenue recognition</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">Operations</h3>
+        <ul>
+          <li>Per-tenant observability &amp; SLOs</li>
+          <li>Per-tenant rate-limiting</li>
+          <li>Audit logs as a feature</li>
+          <li>Data residency &amp; compliance shapes</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 03 — WHAT IS SAAS ARCHITECTURE -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">02</span><h2>What "SaaS Architecture" Means</h2></div>
+  <p>SaaS isn't a particular tech stack — it's the discipline of running <span class="a">one application for many customers at once</span>, where each customer (tenant) believes the app exists for them alone, while underneath it's shared.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">The unique problems SaaS poses</h3>
+        <ul>
+          <li><span class="g">Isolation</span> — Tenant A must never see Tenant B's data, ever</li>
+          <li><span class="g">Noisy-neighbour</span> — one tenant must not be able to degrade everyone else</li>
+          <li><span class="g">Tenant lifecycle</span> — sign-up, trial, paid, churn, GDPR delete</li>
+          <li><span class="g">Tenant-aware billing</span> — usage, seats, tiers, overage, mid-cycle changes</li>
+          <li><span class="g">Tenant-aware identity</span> — every tenant brings their own IdP, ideally</li>
+          <li><span class="g">Tenant-aware compliance</span> — DPA, BAA, residency, audit</li>
+          <li><span class="g">Tenant-aware ops</span> — debug Customer X's bug without copying their data</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card green">
+        <h3 class="g">What it shares with everything else</h3>
+        <p>SaaS still uses the same primitives: VPCs, containers, queues, databases. The art is <em>partitioning</em> them by tenant — sometimes logically, sometimes physically.</p>
+      </div>
+      <div class="card purple" style="margin-top:0.4em;">
+        <h3 class="p">B2C vs B2B SaaS</h3>
+        <ul>
+          <li><span class="a">B2C</span> — millions of small accounts, individuals, no procurement, low ARPU. Notion-personal, Spotify, Calm.</li>
+          <li><span class="a">B2B</span> — hundreds-to-thousands of company tenants, each with users, SSO, SCIM, audit logs, BAA, DPA. Slack, Linear, Notion-teams.</li>
+          <li>Same code; very different identity, billing, and contractual surface.</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">PLG vs sales-led</h3>
+        <p>Product-Led Growth — frictionless self-serve signup; viral inside companies. Sales-led — pilot, security review, MSA. Most successful SaaS today is hybrid: PLG funnels feed sales for enterprise tier.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 04 — MULTI-TENANCY SPECTRUM -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">03</span><h2>Multi-Tenancy — The Four Patterns</h2></div>
+
+  <svg class="diagram" viewBox="0 0 1000 320" width="940" height="320">
+    <!-- POOL -->
+    <text x="125" y="30" fill="#f5a623" font-family="Playfair Display,serif" font-size="14" font-weight="700" text-anchor="middle">POOL</text>
+    <rect x="20" y="40" width="210" height="270" rx="6" fill="none" stroke="#f5a623" stroke-width="1.4"/>
+    <rect x="40" y="60" width="170" height="50" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/>
+    <text x="125" y="90" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono,monospace" font-size="10">app (shared)</text>
+    <rect x="40" y="120" width="170" height="50" rx="4" fill="#2a1a1a" stroke="#f87171"/>
+    <text x="125" y="145" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="10">DB (shared)</text>
+    <text x="125" y="160" text-anchor="middle" fill="#888" font-family="JetBrains Mono,monospace" font-size="9">tenant_id col</text>
+    <text x="125" y="195" text-anchor="middle" fill="#ccc" font-family="DM Sans,sans-serif" font-size="10">all tenants</text>
+    <text x="125" y="210" text-anchor="middle" fill="#ccc" font-family="DM Sans,sans-serif" font-size="10">→ same stack</text>
+    <text x="125" y="270" text-anchor="middle" fill="#888" font-family="JetBrains Mono,monospace" font-size="9">density: ⭐⭐⭐⭐⭐</text>
+    <text x="125" y="285" text-anchor="middle" fill="#888" font-family="JetBrains Mono,monospace" font-size="9">isolation: logical</text>
+
+    <!-- BRIDGE -->
+    <text x="375" y="30" fill="#a78bfa" font-family="Playfair Display,serif" font-size="14" font-weight="700" text-anchor="middle">BRIDGE</text>
+    <rect x="270" y="40" width="210" height="270" rx="6" fill="none" stroke="#a78bfa" stroke-width="1.4"/>
+    <rect x="290" y="60" width="170" height="50" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/>
+    <text x="375" y="90" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono,monospace" font-size="10">app (shared)</text>
+    <rect x="290" y="120" width="80" height="50" rx="4" fill="#2a1a1a" stroke="#f87171"/>
+    <text x="330" y="148" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">DB-A</text>
+    <rect x="380" y="120" width="80" height="50" rx="4" fill="#2a1a1a" stroke="#f87171"/>
+    <text x="420" y="148" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">DB-B</text>
+    <text x="375" y="195" text-anchor="middle" fill="#ccc" font-family="DM Sans,sans-serif" font-size="10">shared compute</text>
+    <text x="375" y="210" text-anchor="middle" fill="#ccc" font-family="DM Sans,sans-serif" font-size="10">isolated DBs / schemas</text>
+    <text x="375" y="270" text-anchor="middle" fill="#888" font-family="JetBrains Mono,monospace" font-size="9">density: ⭐⭐⭐⭐</text>
+    <text x="375" y="285" text-anchor="middle" fill="#888" font-family="JetBrains Mono,monospace" font-size="9">isolation: db</text>
+
+    <!-- SILO -->
+    <text x="625" y="30" fill="#f87171" font-family="Playfair Display,serif" font-size="14" font-weight="700" text-anchor="middle">SILO</text>
+    <rect x="520" y="40" width="210" height="270" rx="6" fill="none" stroke="#f87171" stroke-width="1.4"/>
+    <rect x="540" y="60" width="80" height="50" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/>
+    <text x="580" y="88" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono,monospace" font-size="9">app-A</text>
+    <rect x="630" y="60" width="80" height="50" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/>
+    <text x="670" y="88" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono,monospace" font-size="9">app-B</text>
+    <rect x="540" y="120" width="80" height="50" rx="4" fill="#2a1a1a" stroke="#f87171"/>
+    <text x="580" y="148" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">DB-A</text>
+    <rect x="630" y="120" width="80" height="50" rx="4" fill="#2a1a1a" stroke="#f87171"/>
+    <text x="670" y="148" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">DB-B</text>
+    <text x="625" y="195" text-anchor="middle" fill="#ccc" font-family="DM Sans,sans-serif" font-size="10">per-tenant stack</text>
+    <text x="625" y="210" text-anchor="middle" fill="#ccc" font-family="DM Sans,sans-serif" font-size="10">often per-VPC</text>
+    <text x="625" y="270" text-anchor="middle" fill="#888" font-family="JetBrains Mono,monospace" font-size="9">density: ⭐</text>
+    <text x="625" y="285" text-anchor="middle" fill="#888" font-family="JetBrains Mono,monospace" font-size="9">isolation: full</text>
+
+    <!-- HYBRID -->
+    <text x="875" y="30" fill="#4ecb8d" font-family="Playfair Display,serif" font-size="14" font-weight="700" text-anchor="middle">HYBRID</text>
+    <rect x="770" y="40" width="210" height="270" rx="6" fill="none" stroke="#4ecb8d" stroke-width="1.4" stroke-dasharray="4,3"/>
+    <rect x="790" y="60" width="170" height="40" rx="4" fill="#1a2a1a" stroke="#4ecb8d"/>
+    <text x="875" y="85" text-anchor="middle" fill="#4ecb8d" font-family="JetBrains Mono,monospace" font-size="9">pool tier (small tenants)</text>
+    <rect x="790" y="110" width="80" height="40" rx="4" fill="#2a1a1a" stroke="#f87171"/>
+    <text x="830" y="135" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">silo: enterprise A</text>
+    <rect x="880" y="110" width="80" height="40" rx="4" fill="#2a1a1a" stroke="#f87171"/>
+    <text x="920" y="135" text-anchor="middle" fill="#f87171" font-family="JetBrains Mono,monospace" font-size="9">silo: enterprise B</text>
+    <text x="875" y="195" text-anchor="middle" fill="#ccc" font-family="DM Sans,sans-serif" font-size="10">tier by tenant size</text>
+    <text x="875" y="210" text-anchor="middle" fill="#ccc" font-family="DM Sans,sans-serif" font-size="10">most large SaaS in 2025</text>
+    <text x="875" y="270" text-anchor="middle" fill="#888" font-family="JetBrains Mono,monospace" font-size="9">density: tuned</text>
+    <text x="875" y="285" text-anchor="middle" fill="#888" font-family="JetBrains Mono,monospace" font-size="9">isolation: tiered</text>
+  </svg>
+</section>
+
+
+<!-- 05 — POOL DEEP DIVE -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">04</span><h2>Pool — One DB, tenant_id Everywhere</h2></div>
+  <p>Highest density. One running application, one (sharded) database, one deploy pipeline. Every row carries a <code>tenant_id</code>; every query filters on it. Used by Slack at scale, Notion at scale, Linear from day one.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">The schema pattern</h3>
+<pre><code>CREATE TABLE projects (
+  id          uuid PRIMARY KEY,
+  tenant_id   uuid NOT NULL REFERENCES tenants(id),
+  name        text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+-- Index every tenant-scoped query on (tenant_id, ...)
+CREATE INDEX projects_by_tenant
+  ON projects (tenant_id, created_at DESC);</code></pre>
+        <p style="margin-top:.2em;">Every query must include <code>WHERE tenant_id = $1</code>. Forgetting once = cross-tenant leak.</p>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">Postgres Row-Level Security</h3>
+<pre><code>ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON projects
+  USING (tenant_id = current_setting('app.tenant_id')::uuid);
+
+-- In your connection pooler / middleware:
+SET app.tenant_id = '...uuid of current request...';</code></pre>
+        <p style="margin-top:.2em;">RLS turns a leak from "always" to "almost-impossible" — the DB rejects unscoped queries.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">The good</h3>
+        <ul>
+          <li>Cheapest per-tenant operating cost</li>
+          <li>One backup, one upgrade, one schema migration</li>
+          <li>Easiest to add cross-tenant analytics features later</li>
+          <li>Scales to millions of small tenants if you shard sensibly</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">The hard parts</h3>
+        <ul>
+          <li><span class="r">One bad tenant takes everyone down</span> — N+1 query, runaway export, accidental cartesian. Per-tenant rate-limiting is essential.</li>
+          <li><span class="r">Cross-tenant leak is existential</span> — tests, RLS, query-shape audits, tenant-bound DB users</li>
+          <li><span class="r">Per-tenant features hard</span> — feature flags scoped by tenant, not by user</li>
+          <li><span class="r">Customer-specific schema customisation</span> impossible — use JSONB columns</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">Sharding pool</h3>
+        <p>Shard tenants across multiple Postgres clusters by <code>hash(tenant_id) % N</code>. Citus, Vitess, AWS Aurora Limitless, PlanetScale. Most large SaaS are <em>sharded pool</em>, not single-DB pool.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 06 — BRIDGE / SCHEMA-PER-TENANT -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">05</span><h2>Bridge — Schema- or DB-Per-Tenant</h2></div>
+  <p>Compromise: shared compute, isolated data. Every tenant gets their own <span class="a">schema</span> (Postgres) or own <span class="a">database</span> in a shared Postgres cluster. The cluster is shared; the data is fully partitioned.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Schema per tenant</h3>
+<pre><code>CREATE SCHEMA tenant_acme;
+CREATE TABLE tenant_acme.projects (id uuid PRIMARY KEY, ...);
+
+-- Per request, in middleware:
+SET search_path = tenant_acme, public;</code></pre>
+        <p style="margin-top:.2em;">Same DDL applied to every schema. Migrations replay across thousands of schemas.</p>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">Where bridge wins</h3>
+        <ul>
+          <li>Auditor likes hearing "Tenant A's data is in its own schema"</li>
+          <li>Per-tenant backup &amp; restore is trivial — <code>pg_dump --schema=…</code></li>
+          <li>GDPR delete = drop schema. Done.</li>
+          <li>Customer-specific schema tweaks become possible (rare, but useful for legacy)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Where bridge breaks</h3>
+        <ul>
+          <li>Postgres slows down beyond ~10k schemas — system catalogs balloon</li>
+          <li>Migrations: 5000 schemas × 30s migration = 41 hours</li>
+          <li>Connections: pgbouncer + many schemas can confuse pool reset</li>
+          <li>Cross-tenant analytics = read each schema and union — painful</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">Real-world</h3>
+        <ul>
+          <li><span class="a">PostHog</span> uses pool with tenant_id everywhere</li>
+          <li><span class="a">GitLab</span> ships pool too (the open-source product is single-tenant; the SaaS is pooled)</li>
+          <li><span class="a">Atlassian Confluence</span> historically used DB-per-tenant — now blends both</li>
+          <li><span class="a">Salesforce</span> originated bridge-style metadata-driven multi-tenancy</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">Bridge is rarely the long-term answer</h3>
+        <p>Most SaaS that start at bridge end up moving to sharded pool (small tenants) + silo (whales) — the hybrid model.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 07 — SILO -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">06</span><h2>Silo — A Stack Per Tenant</h2></div>
+  <p>Each customer gets their own application instance, their own database, often their own VPC. Highest isolation, highest cost. Used for top-tier enterprise tenants and regulated industries.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Why customers ask for silo</h3>
+        <ul>
+          <li>"<em>Our auditor demands data isolation</em>" — HIPAA, FedRAMP, financial</li>
+          <li>"<em>We need our own backup &amp; restore SLA</em>"</li>
+          <li>"<em>We need a different SLA</em>" — 99.99% on top, 99.9% in pool</li>
+          <li>"<em>BYO encryption keys (BYOK)</em>"</li>
+          <li>"<em>Our network team needs to peer into your VPC</em>"</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">How to build it cheaply</h3>
+        <ul>
+          <li>Same container image as pool — different config, different DB</li>
+          <li>One Terraform module, parameterised per tenant</li>
+          <li>One deploy pipeline that fans out to many silos</li>
+          <li>Often runs in customer's own AWS account ("BYO cloud") via cross-account IAM</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">"Single-tenant SaaS"</h3>
+        <p>A whole new product category — companies whose entire offering is silo-only because of regulation: <span class="a">Privatemode AI</span>, healthcare-specific platforms, defence-tech. Charges 3–10× the pooled equivalent.</p>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">BYO cloud</h3>
+        <p>Customer brings the AWS / GCP account; you run your software in it via cross-account roles. <span class="g">Hashicorp HCP</span>, <span class="g">Confluent Cloud Networking</span>, <span class="g">Databricks</span>, <span class="g">Snowflake</span> on private deploys all do this.</p>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">Silo's hidden tax</h3>
+        <p>Your support team can't reproduce a bug without the customer's logs. Your release cadence slows — every silo upgrade is a maintenance window. Your on-call has N customers' alerts, not one. Charge accordingly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 08 — TENANT ISOLATION -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">07</span><h2>Tenant Isolation — Defence in Depth</h2></div>
+  <p>"Tenant isolation" is not a checkbox; it's <span class="a">layered enforcement</span> — at app, DB, network, and operations.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Application layer</h3>
+        <ul>
+          <li>Tenant ID extracted from JWT / session, never from URL or query params</li>
+          <li>Middleware that <em>refuses to query without one</em></li>
+          <li>Tests that simulate cross-tenant access and assert 403/404</li>
+          <li>Lint rule: any query without <code>WHERE tenant_id = ?</code> is a build failure</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">Database layer</h3>
+        <ul>
+          <li>Postgres RLS as the floor</li>
+          <li>Per-tenant DB users — connection rebinds <code>set local role tenant_acme</code></li>
+          <li>Encryption at rest with per-tenant DEKs (Tenant DEK, KMS-wrapped) for compliance tiers</li>
+          <li>Audit logging on every query</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Network layer (silo / hybrid)</h3>
+        <ul>
+          <li>Per-tenant VPC or namespace</li>
+          <li>Per-tenant TLS cert / SNI</li>
+          <li>PrivateLink endpoints for BYO-cloud tenants</li>
+          <li>Cell-based architecture — see slide 17</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">Operational layer</h3>
+        <ul>
+          <li>Engineers cannot SSH/exec into anywhere with tenant data without an audited break-glass flow</li>
+          <li>Logs are tenant-tagged but not tenant-readable to other tenants</li>
+          <li>Backups are encrypted with per-tenant or per-cell keys</li>
+          <li>"Customer X support" — copy a sanitised slice into a debug tenant; never query prod</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">The bug that ends the company</h3>
+        <p>An ORM "convenience" that lets you skip <code>WHERE tenant_id</code> "just for admin queries" and ships to prod via a feature flag. RLS or perish.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 09 — B2B IDENTITY -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">08</span><h2>B2B Identity — Why It's Different</h2></div>
+  <p>In B2C, every user has a Google login. In B2B, every <em>customer</em> brings their own identity provider — Okta, Entra, Google Workspace, OneLogin, JumpCloud — and your app must federate to <span class="a">all of them at once</span>.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">The B2B identity matrix</h3>
+        <table>
+          <thead><tr><th>Need</th><th>Standard</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>Login</td><td>SAML 2.0 or OIDC</td><td>Browser SSO from customer's IdP</td></tr>
+            <tr><td>User provisioning</td><td>SCIM 2.0</td><td>Customer's IdP creates / updates / deactivates users in your app</td></tr>
+            <tr><td>Just-in-time provisioning</td><td>via SAML/OIDC claims</td><td>Create user on first login from claims</td></tr>
+            <tr><td>Group sync</td><td>SCIM groups</td><td>Map IdP groups to your app's roles</td></tr>
+            <tr><td>Audit / SOC 2</td><td>Audit logs</td><td>Customer can answer "who did what"</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">Login flow (SAML SSO)</h3>
+<pre><code># User hits app.your-saas.com/login
+# We detect their email domain → tenant → IdP
+
+GET /sso?email=alice@acme.com
+  → 302 to acme.okta.com/saml/yourapp
+
+# user logs in at Okta
+# Okta POSTs SAML assertion back
+
+POST /sso/callback
+&lt;SAMLResponse&gt;...&lt;/SAMLResponse&gt;
+  → we verify signature against Okta cert
+  → extract email, name, groups
+  → create / update user, set tenant
+  → set session cookie</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">SCIM (provisioning) flow</h3>
+<pre><code># Okta admin assigns user to your app
+POST /scim/v2/Users HTTP/1.1
+Authorization: Bearer &lt;tenant-scoped-token&gt;
+{
+  "userName":"alice@acme.com",
+  "name":{"givenName":"Alice","familyName":"Brown"},
+  "emails":[{"value":"alice@acme.com","primary":true}],
+  "active": true
+}
+
+# Later — Alice leaves Acme; Okta deprovisions
+PATCH /scim/v2/Users/&lt;id&gt;
+{ "active": false }
+# → your app immediately invalidates her sessions</code></pre>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">Roles &amp; permissions</h3>
+        <ul>
+          <li><span class="a">Role-based</span> (RBAC) — Owner, Admin, Member, Guest</li>
+          <li><span class="a">Attribute-based</span> (ABAC) — finer per-resource (project, region)</li>
+          <li><span class="a">ReBAC</span> (relationship) — Zanzibar / OpenFGA / SpiceDB; "Alice can edit this doc because she's a member of the team that owns it"</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">"Email login" is not enough for enterprise</h3>
+        <p>From the moment you sell to companies of more than ~50 people, you'll hear: "no SSO no sale". <em>Build SAML/OIDC and SCIM before your first $50k contract.</em></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 10 — AUTH-AS-A-SERVICE -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">09</span><h2>Auth-as-a-Service — Don't Build SSO Yourself</h2></div>
+  <p>Building SAML, OIDC, SCIM, MFA, magic links, password reset, brute-force protection, audit logs is months of work and a permanent maintenance burden. Use a platform.</p>
+
+  <table style="margin-top:.3em;">
+    <thead><tr><th>Provider</th><th>Best fit</th><th>SAML/OIDC</th><th>SCIM</th><th>Pricing notes</th></tr></thead>
+    <tbody>
+      <tr><td><span class="a">Auth0</span> (Okta)</td><td>Mature B2C + B2B</td><td>✔</td><td>extra fee</td><td>per-MAU; cheap small, expensive at scale</td></tr>
+      <tr><td><span class="a">WorkOS</span></td><td>B2B SaaS, "SSO as one API"</td><td>✔ (every IdP normalised)</td><td>✔</td><td>flat $125/connection/month, first 1M users free</td></tr>
+      <tr><td><span class="a">Stytch</span></td><td>Passwordless-first, dev-native</td><td>✔</td><td>✔ (B2B SDK)</td><td>per-MAU; B2B SDK is the standout</td></tr>
+      <tr><td><span class="a">Clerk</span></td><td>Frontend-led, React-shaped</td><td>✔ (Pro / Enterprise)</td><td>✔ (Enterprise)</td><td>per-MAU; great UI components out of the box</td></tr>
+      <tr><td><span class="a">FrontEgg</span></td><td>B2B with built-in admin portal</td><td>✔</td><td>✔</td><td>flat by tier</td></tr>
+      <tr><td><span class="a">AWS Cognito</span></td><td>If already deeply on AWS</td><td>✔ (limits)</td><td>✘</td><td>cheap; UX is the catch</td></tr>
+      <tr><td><span class="a">Microsoft Entra External ID</span></td><td>Customer-facing apps for Azure shops</td><td>✔</td><td>✔</td><td>per-MAU, generous free tier</td></tr>
+      <tr><td><span class="a">Keycloak / ZITADEL / Authentik</span></td><td>Self-hosted, EU-resident, OSS</td><td>✔</td><td>varies</td><td>free + ops cost; see <a href="https://github.com/BrendanJamesLynskey/OAuth_for_MCP">OAuth for MCP</a></td></tr>
+    </tbody>
+  </table>
+
+  <div class="cols cols-2" style="margin-top:0.3em;">
+    <div class="card amber">
+      <h3 class="a">Pick by question</h3>
+      <ul>
+        <li>"<em>I need SSO &amp; SCIM tomorrow</em>" → WorkOS</li>
+        <li>"<em>I'm React/Next, want hosted UI</em>" → Clerk</li>
+        <li>"<em>I want passwordless / OTP / magic link</em>" → Stytch</li>
+        <li>"<em>I'm already in Auth0</em>" → stay; migrate only if MAUs blow up</li>
+        <li>"<em>I want EU sovereignty / OSS</em>" → ZITADEL or Keycloak</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3 class="g">Companion deck</h3>
+      <p>The full provider tour, with self-hosted options and the OAuth specification trail, is in the <a href="https://github.com/BrendanJamesLynskey/Introduction_to_OAuth">Introduction to OAuth</a> and <a href="https://github.com/BrendanJamesLynskey/OAuth_for_MCP">OAuth for MCP</a> decks.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- 11 — METERING DATA MODEL -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">10</span><h2>Metering — The Data Model</h2></div>
+  <p>SaaS billing is a write-mostly time-series workload. Every metered action emits an event; the billing engine aggregates and applies pricing rules.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">A minimal usage event</h3>
+<pre><code>{
+  "event_id":     "evt_01HRX2...",
+  "tenant_id":    "tnt_acme",
+  "user_id":      "usr_alice",
+  "metric":       "tokens_used",
+  "value":        1284,
+  "timestamp":    "2026-05-04T10:33:21Z",
+  "idempotency":  "req_01HRX2...",
+  "metadata": { "model":"gpt-5", "feature":"chat" }
+}</code></pre>
+        <p style="margin-top:.2em;">Idempotency key prevents double-billing on retry. Stored append-only — never updated or deleted (audit, replay).</p>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">The pricing layer (separate)</h3>
+<pre><code>plan = "growth"            # tier
+rules = [
+  { metric:"seats", flat: 12.00 },           # per-seat
+  { metric:"tokens_used",
+    tiered:[
+      { up_to: 1_000_000, unit: 0.0 },       # included
+      { up_to: 10_000_000, unit: 0.000004 }, # overage
+      { up_to: null, unit: 0.0000035 }
+    ] }
+]</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Build vs buy — the metering platform</h3>
+        <table>
+          <thead><tr><th>Option</th><th>What it gives you</th></tr></thead>
+          <tbody>
+            <tr><td><span class="a">Stripe Billing + Meters</span></td><td>Subscriptions, prorations, invoicing; usage meters since 2024</td></tr>
+            <tr><td><span class="a">Lago</span> (OSS)</td><td>Self-hosted metering + pricing engine; SQL-friendly</td></tr>
+            <tr><td><span class="a">Orb</span></td><td>Spec-the-pricing-as-code, reconciliation-first</td></tr>
+            <tr><td><span class="a">Metronome</span></td><td>Used by OpenAI, Anthropic, Anysphere — usage at AIaaS scale</td></tr>
+            <tr><td><span class="a">m3ter</span></td><td>UK-based, enterprise-billing depth</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">Three ways to charge</h3>
+        <ul>
+          <li><span class="a">Per-seat</span> — Slack, Notion. Predictable.</li>
+          <li><span class="a">Per-usage</span> — Stripe, Twilio, OpenAI. Scales with value.</li>
+          <li><span class="a">Hybrid</span> — Vercel ($20/seat + bandwidth), most modern SaaS</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">Reconciliation is the hard problem</h3>
+        <p>Did our metering stream record everything Stripe billed for? For SOC1 / SOX-aligned customers, you need a daily reconciliation report and a way to credit-note discrepancies. Lago / Orb / Metronome do this; rolling-your-own usually skips it and breaks at audit.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 12 — PER-TENANT OBSERVABILITY -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">11</span><h2>Per-Tenant Observability &amp; SLOs</h2></div>
+  <p>"Our p99 is 250 ms" is meaningless to a SaaS — what matters is "<span class="a">Customer Acme's p99 is 250 ms</span>". Build observability that sees tenants as first-class.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">The four golden signals — per tenant</h3>
+        <ul>
+          <li><span class="g">Latency</span> by tenant — find noisy / starved tenants early</li>
+          <li><span class="g">Traffic</span> by tenant — detect ramp / leak / abuse</li>
+          <li><span class="g">Errors</span> by tenant — separate "their bug" from "our bug"</li>
+          <li><span class="g">Saturation</span> by tenant resource — DB connections, rate-limit tokens, queue depth</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">Make tenant_id a span attribute</h3>
+<pre><code>// OpenTelemetry, every span:
+span.setAttribute("tenant.id", req.tenant.id);
+span.setAttribute("tenant.tier", req.tenant.tier);
+span.setAttribute("tenant.region", req.tenant.region);
+
+// Then in Honeycomb / Tempo / Datadog:
+GROUP BY tenant.id  → per-tenant dashboards</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Tier-aware SLOs</h3>
+        <table>
+          <thead><tr><th>Tier</th><th>p99 latency</th><th>Availability</th></tr></thead>
+          <tbody>
+            <tr><td>Free</td><td>1.5 s</td><td>99.5%</td></tr>
+            <tr><td>Growth</td><td>500 ms</td><td>99.9%</td></tr>
+            <tr><td>Enterprise</td><td>250 ms</td><td>99.95%</td></tr>
+            <tr><td>Enterprise+ (silo)</td><td>250 ms</td><td>99.99%</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:.2em;">Each tier monitored, alerted, and reported to that tier's customers (status page).</p>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">Per-tenant rate-limits</h3>
+        <ul>
+          <li>Token bucket per (tenant, route) — Redis or in-memory</li>
+          <li>Defaults by tier; override per tenant for noisy ones or whitelisted partners</li>
+          <li>Headers — <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code>, <code>Retry-After</code></li>
+          <li>Soft limits (warn) before hard limits (429)</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">Don't let one tenant cost you the cluster</h3>
+        <p>Pool architecture's biggest existential risk. Per-tenant rate-limit + per-tenant query budget + circuit breakers on long-running ops.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 13 — DATA RESIDENCY -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">12</span><h2>Data Residency &amp; Multi-Region SaaS</h2></div>
+  <p>European customers want their data in EU regions, US-Federal customers want US-Gov, Asia customers want APAC. The earlier you think about residency, the cheaper it is to add.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Three architectures</h3>
+        <ul>
+          <li><span class="g">Single-region</span> — start here for B2C and small B2B</li>
+          <li><span class="g">Multi-region active-passive</span> — primary region serves; DR site warm. Easy.</li>
+          <li><span class="g">Multi-region per-tenant</span> — tenant pinned to a home region; data, compute, even auth stay there. The "real" multi-region SaaS.</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">Tenant pinning</h3>
+        <p>At signup, ask: <em>where do you want your data?</em> The answer determines:</p>
+        <ul>
+          <li>Which DB cluster the tenant lives in</li>
+          <li>Which compute region serves their requests</li>
+          <li>Where their backups are stored</li>
+          <li>Where their LLM calls go (deck 06)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Practical patterns</h3>
+        <ul>
+          <li><span class="a">Region-routing at the edge</span> — Cloudflare / API Gateway looks up tenant → region → forwards</li>
+          <li><span class="a">Per-region cell</span> — each region is an independent SaaS deployment</li>
+          <li><span class="a">Globally-replicated control plane</span> — billing, identity, settings; <span class="a">regional data plane</span> — tenant data</li>
+          <li><span class="a">Per-tenant encryption keys</span> in regional KMS</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">Compliance side</h3>
+        <ul>
+          <li><span class="a">GDPR + DPF</span> for EU↔US transfers (post-Schrems II)</li>
+          <li><span class="a">UK adequacy</span> (extended Dec 2024)</li>
+          <li><span class="a">FedRAMP</span> Moderate / High for US-Federal</li>
+          <li><span class="a">Sovereign clouds</span> (deck 01) for the strictest residency</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">The metadata leak</h3>
+        <p>"Customer data is in EU" but billing IDs, audit logs, support chats route through the US. Auditors will catch this. Either keep all of it regional, or document and disclose what doesn't.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 14 — AUDIT LOGS -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">13</span><h2>Audit Logs as a Feature</h2></div>
+  <p>For B2B customers, audit logs are not a bonus — they are <em>part of the product</em>. SOC 2 and ISO 27001 customers will demand them; without them, you fail the security review.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">What to log</h3>
+        <ul>
+          <li><span class="g">Who</span> — user_id, IP, user agent, session</li>
+          <li><span class="g">What</span> — action verb (create, update, delete, share, login)</li>
+          <li><span class="g">On what</span> — resource type + ID + before/after diff</li>
+          <li><span class="g">When</span> — server timestamp (UTC, ISO 8601)</li>
+          <li><span class="g">Where</span> — region, edge POP</li>
+          <li><span class="g">How</span> — auth method (password / SAML / API key)</li>
+          <li><span class="g">Why?</span> — request_id, parent operation</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">A useful audit row</h3>
+<pre><code>{
+  "id":"aud_01HRX...",
+  "tenant_id":"tnt_acme",
+  "actor":{"type":"user","id":"usr_alice","ip":"203.0.113.5","ua":"..."},
+  "action":"document.share",
+  "resource":{"type":"document","id":"doc_42","name":"Q1 plan"},
+  "context":{"to":"bob@vendor.com","permission":"comment"},
+  "session_id":"ses_...",
+  "request_id":"req_01HRX...",
+  "ts":"2026-05-04T10:33:21Z"
+}</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">How to expose them</h3>
+        <ul>
+          <li>UI in the admin area — searchable, filterable, paginated</li>
+          <li>Export CSV/JSON</li>
+          <li>Streaming — webhook / Splunk / Sumo / Datadog HTTP source</li>
+          <li>SIEM integration — Microsoft Sentinel, Splunk Enterprise Security</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">Build vs buy</h3>
+        <ul>
+          <li><span class="a">Postgres / OpenSearch</span> + a UI you build — fine for ≤ 10M events/month</li>
+          <li><span class="a">ClickHouse</span> — column store, scales to billions</li>
+          <li><span class="a">Workos Audit Logs</span> — drop-in API, customer-facing UI included</li>
+          <li><span class="a">DataDog Audit Trail</span> — if already on DD</li>
+          <li><span class="a">Cribl Stream / Vector</span> — for the streaming side</li>
+        </ul>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">Tamper-evidence</h3>
+        <p>For HIPAA / FedRAMP / SOX, auditors want logs that can't be silently rewritten. Append-only storage + hash-chain (each row hashes the previous) + immutability (S3 Object Lock / Glacier Vault Lock).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 15 — COMPLIANCE -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">14</span><h2>Compliance Shapes — SaaS-Specific</h2></div>
+  <p>Compliance is what distinguishes "SaaS for engineers" from "SaaS for the regulated world". Each framework asks the same things in slightly different language. (Deck 05 covers the cloud-side controls.)</p>
+
+  <table style="font-size:.5em;">
+    <thead><tr><th>Framework</th><th>Trigger</th><th>What customers will ask for</th><th>Year-1 cost (rough)</th></tr></thead>
+    <tbody>
+      <tr><td><span class="a">SOC 2 Type II</span></td><td>B2B mid-market, $50k+ contracts</td><td>Audit report, security questionnaire</td><td>$30–80k (auditor) + $30k tooling (Vanta/Drata/Secureframe)</td></tr>
+      <tr><td><span class="a">ISO 27001</span></td><td>European customers, government</td><td>Certificate, SoA, ISMS</td><td>$25–60k</td></tr>
+      <tr><td><span class="a">HIPAA (BAA)</span></td><td>Health data — patients, devices, providers</td><td>BAA signed, encryption, audit logs, isolation</td><td>$10–30k tooling, BAA from cloud provider</td></tr>
+      <tr><td><span class="a">GDPR / DPF</span></td><td>Any EU personal data</td><td>DPA, sub-processor list, data residency option, deletion / export endpoints</td><td>Mostly engineering work, no auditor</td></tr>
+      <tr><td><span class="a">PCI DSS</span></td><td>Storing card numbers</td><td>Tokenisation (Stripe handles for most)</td><td>Avoid — let Stripe / Adyen handle</td></tr>
+      <tr><td><span class="a">FedRAMP</span></td><td>US Federal customers</td><td>FedRAMP Moderate / High, GovCloud / Azure Gov</td><td>$1M+ — only if there's revenue waiting</td></tr>
+      <tr><td><span class="a">EU AI Act</span></td><td>Selling AI features in EU</td><td>Risk classification, transparency, model cards</td><td>Mostly process; ramp through 2025–2027</td></tr>
+    </tbody>
+  </table>
+
+  <div class="cols cols-2" style="margin-top:0.3em;">
+    <div class="card amber">
+      <h3 class="a">Compliance automation tools</h3>
+      <ul>
+        <li><span class="g">Vanta</span> · <span class="g">Drata</span> · <span class="g">Secureframe</span> · <span class="g">Tugboat Logic</span> · <span class="g">Anecdotes</span></li>
+        <li>Ingest from your cloud / GitHub / IdP; map to controls; generate evidence</li>
+        <li>SOC 2 Type II in 6–9 months instead of 18+</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3 class="g">When to start</h3>
+      <p>Earlier than you think. Once your sales pipeline has a $50k deal, security review will demand it. Vanta + 6 months ≪ blowing the deal.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- 16 — TENANT LIFECYCLE -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">15</span><h2>Tenant Lifecycle</h2></div>
+  <p>From signup to GDPR-delete, every tenant moves through a state machine. Build it explicitly; don't let it evolve as a tangle of <code>active</code> booleans.</p>
+
+  <svg class="diagram" viewBox="0 0 1000 200" width="940" height="200">
+    <defs><marker id="m16" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#888"/></marker></defs>
+    <g font-family="Playfair Display,serif" font-size="11" font-weight="700" text-anchor="middle">
+      <rect x="20" y="80" width="120" height="40" rx="6" fill="#1a1a2a" stroke="#a78bfa"/>
+      <text x="80" y="105" fill="#a78bfa">prospect</text>
+
+      <rect x="180" y="80" width="120" height="40" rx="6" fill="#1a1a2a" stroke="#60a5fa"/>
+      <text x="240" y="105" fill="#60a5fa">trial</text>
+
+      <rect x="340" y="80" width="120" height="40" rx="6" fill="#1a1a2a" stroke="#4ecb8d"/>
+      <text x="400" y="105" fill="#4ecb8d">active</text>
+
+      <rect x="500" y="20" width="120" height="40" rx="6" fill="#1a1a2a" stroke="#f5a623"/>
+      <text x="560" y="45" fill="#f5a623">past-due</text>
+
+      <rect x="500" y="140" width="120" height="40" rx="6" fill="#1a1a2a" stroke="#f5a623"/>
+      <text x="560" y="165" fill="#f5a623">paused</text>
+
+      <rect x="660" y="80" width="120" height="40" rx="6" fill="#1a1a2a" stroke="#f87171"/>
+      <text x="720" y="105" fill="#f87171">cancelled</text>
+
+      <rect x="820" y="80" width="120" height="40" rx="6" fill="#1a1a2a" stroke="#f87171"/>
+      <text x="880" y="105" fill="#f87171">deleted</text>
+    </g>
+    <g stroke="#888" stroke-width="1.2" fill="none" marker-end="url(#m16)">
+      <path d="M 140 100 L 180 100"/>
+      <path d="M 300 100 L 340 100"/>
+      <path d="M 460 90 L 500 50"/>
+      <path d="M 460 110 L 500 150"/>
+      <path d="M 620 50 L 670 90"/>
+      <path d="M 620 150 L 670 110"/>
+      <path d="M 460 100 L 660 100"/>
+      <path d="M 780 100 L 820 100"/>
+    </g>
+  </svg>
+
+  <div class="cols cols-3" style="margin-top:0.2em;">
+    <div class="card amber">
+      <h3 class="a">Trial → active</h3>
+      <p>Time-bound, feature-gated. Convert via Stripe trial-end + 24h grace. Don't auto-charge silently — confirmation email.</p>
+    </div>
+    <div class="card green">
+      <h3 class="g">Past-due / paused</h3>
+      <p>Read-only after 7 days; full pause after 30. Dunning emails (Stripe / Lago / Recurly handle this).</p>
+    </div>
+    <div class="card red">
+      <h3 class="r">Deleted</h3>
+      <p>GDPR right-to-erasure: 30-day soft-delete (recoverable), then hard delete (overwritten in DB, removed from backups via lifecycle, removed from search indexes). <em>Document the SLA.</em></p>
+    </div>
+  </div>
+</section>
+
+
+<!-- 17 — CELL-BASED ARCHITECTURE -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">16</span><h2>Scaling Up — Cell-Based Architecture</h2></div>
+  <p>Past a certain size, "one big pool" stops scaling. The pattern: divide tenants into <span class="a">cells</span>, each a fully independent slice of the platform. Used by Slack, Stripe, AWS itself.</p>
+
+  <div class="cols cols-2" style="margin-top:0.4em;">
+    <div>
+      <div class="card amber">
+        <h3 class="a">What a cell is</h3>
+        <ul>
+          <li>An independent deployment of the SaaS — its own DB, queue, cache, services</li>
+          <li>Hosts N tenants, sized to a known capacity (e.g. 1000 tenants)</li>
+          <li>Failure of one cell ≠ failure of the platform — blast radius is one cell</li>
+          <li>Routing layer (cell-router) maps tenant → cell</li>
+        </ul>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">Why it works</h3>
+        <ul>
+          <li>Each cell is small enough to be reasoned about, deployed atomically, debugged</li>
+          <li>You can deploy to one cell at a time, "wave" deploys</li>
+          <li>You can put the noisy whales in their own cells (silo + cell convergence)</li>
+          <li>You can run cells in different regions for residency</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Real-world examples</h3>
+        <ul>
+          <li><span class="a">Slack</span> — workspace ↔ channel-server, sharded</li>
+          <li><span class="a">Stripe</span> — entire stack replicated per cell, US-East has hundreds</li>
+          <li><span class="a">Salesforce "PODs"</span> — the original cell pattern (early 2000s)</li>
+          <li><span class="a">AWS</span> internal services — cellular by default</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">When to start</h3>
+        <p>Don't day-one. Build pool, with a tenant_id everywhere and a routing-aware data layer. When the database is bumping limits, slice by cell. The routing abstraction is the first thing to build right.</p>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">Cross-cell features hurt</h3>
+        <p>If tenants need to talk to other tenants (Slack Connect, Notion guests), the routing-via-tenant model breaks. Solve at the application layer with explicit cross-cell contracts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 18 — ANTI-PATTERNS -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">17</span><h2>SaaS Anti-Patterns</h2></div>
+
+  <div class="cols cols-2">
+    <div>
+      <div class="card red">
+        <h3 class="r">"tenant_id is optional in some queries"</h3>
+        <p>The first cross-tenant leak is a career event. Lint, RLS, code review every query. No exceptions for "internal-only" admin pages.</p>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">"DIY SAML"</h3>
+        <p>SAML is XML, signed XML, with edge cases dating to 2005. Every XML signature library has historically had a <em>signature wrapping</em> CVE. Use WorkOS/Auth0; don't roll it.</p>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">"We'll add metering before launch"</h3>
+        <p>You won't. Metering plumbing should be live before billing rules; events flowing six months early is fine. Wiring it after launch into a working app means missing a quarter of usage.</p>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">"Audit logs go to the same DB as the app"</h3>
+        <p>Performance footgun (write amp), eventually deletion-resistance footgun. Ship to a separate store from day one.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card red">
+        <h3 class="r">"One DB shared across customers, no cross-tenant rate limit"</h3>
+        <p>Customer A's CSV export takes down customer B's logins. Per-tenant rate limits on every expensive operation.</p>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">"Build SOC 2 ourselves"</h3>
+        <p>You can. You won't ship product. Vanta / Drata / Secureframe — pick one, $30k/yr, 70% time saved.</p>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">"Multi-region is just a checkbox"</h3>
+        <p>Multi-region is an architecture, not a feature. Latency, replication lag, partition tolerance, conflict resolution — all surface immediately. Plan for it from the data model upward.</p>
+      </div>
+      <div class="card red" style="margin-top:0.4em;">
+        <h3 class="r">"GDPR delete by setting deleted_at"</h3>
+        <p>The data is still in the DB, the backups, the analytics warehouse, the search index, the audit log, the LLM context cache… Build delete as a fan-out job that touches every stage.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 19 — SUMMARY -->
+<section data-background-color="#0a0a0f">
+  <div class="slide-hdr"><span class="tag">18</span><h2>Summary</h2></div>
+
+  <div class="cols cols-2">
+    <div>
+      <div class="card amber">
+        <h3 class="a">Three takeaways</h3>
+        <ol style="padding-left:1.2em;">
+          <li>SaaS architecture is multi-tenancy + B2B identity + metering + per-tenant ops. Each is its own discipline; treat them as load-bearing from day one.</li>
+          <li>Build pool, expect to slice into cells, leave a silo escape hatch. The hybrid model is where every successful B2B SaaS ends up.</li>
+          <li>Buy the auth platform, buy the metering platform, buy compliance automation. The differentiation isn't there; the engineering cost is.</li>
+        </ol>
+      </div>
+      <div class="card green" style="margin-top:0.4em;">
+        <h3 class="g">Next in the series</h3>
+        <ul>
+          <li><span class="a">05</span> Cloud Security — the cross-cutting concerns above</li>
+          <li><span class="a">06</span> LLM-as-a-Service — managed AI for SaaS features</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple">
+        <h3 class="p">Companion decks</h3>
+        <ul>
+          <li><a href="https://github.com/BrendanJamesLynskey/Monetising_and_Distributing_Software">Monetising &amp; Distributing Software</a> — the SaaS business side</li>
+          <li><a href="https://github.com/BrendanJamesLynskey/Introduction_to_OAuth">Introduction to OAuth</a> — identity foundations</li>
+          <li><a href="https://github.com/BrendanJamesLynskey/OAuth_for_MCP">OAuth for MCP</a> — the full provider tour</li>
+          <li><a href="https://github.com/BrendanJamesLynskey/Introduction_to_Web_Authentication">Web Authentication</a> — sessions, JWTs, MFA</li>
+          <li><a href="https://github.com/BrendanJamesLynskey/Introduction_to_Databases">Databases</a> — the storage layer behind every SaaS</li>
+        </ul>
+      </div>
+      <div class="card blue" style="margin-top:0.4em;">
+        <h3 class="b">One sentence</h3>
+        <p>"<em>SaaS is the discipline of running one product for many strangers — every architectural choice you make ought to make that easier, not harder, six years from now.</em>"</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/highlight/highlight.min.js"></script>
+<script>
+Reveal.initialize({hash:true,slideNumber:'c/t',transition:'fade',transitionSpeed:'fast',
+  controls:true,progress:true,center:false,width:1100,height:900,margin:0.01,
+  plugins:[RevealHighlight],highlight:{theme:'monokai'}});
+</script>
+<script>
+(function(){var h=Reveal.getConfig().height||900,m=Reveal.getConfig().margin||0.02;
+  var maxH=Math.floor(h*(1-2*m))+'px';
+  function fixSlides(){document.querySelectorAll('.reveal .slides>section,.reveal .slides>section>section').forEach(function(s){s.style.display='block';s.style.maxHeight=maxH;});}
+  Reveal.on('ready',fixSlides);Reveal.on('slidechanged',fixSlides);})();
+</script>
+</body>
+</html>
