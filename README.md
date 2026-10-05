@@ -48,7 +48,7 @@ Companion to [Monetising &amp; Distributing Software](https://github.com/Brendan
 
 ## Technology
 
-[Reveal.js 4.6](https://revealjs.com) · [highlight.js](https://highlightjs.org) · Playfair Display + DM Sans + JetBrains Mono · inline SVG diagrams. Single self-contained `index.html`.
+[Reveal.js 4.6](https://revealjs.com) · [highlight.js](https://highlightjs.org) · Big Shoulders Display + Public Sans + Overpass Mono · inline SVG diagrams. Single self-contained `index.html`.
 
 ## See also
 
